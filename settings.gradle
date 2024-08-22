@@ -1,0 +1,4 @@
+rootProject.name = 'keyedinstances'
+
+include(":api")
+include(":core")

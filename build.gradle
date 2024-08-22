@@ -1,0 +1,48 @@
+import dev.oop778.gradle.common.CommonExtension
+import dev.oop778.gradle.common.CommonPlugin
+import dev.oop778.gradle.common.HierarchyProjectName
+
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+apply plugin: CommonPlugin
+
+common {
+    applyCommonToAllProjects()
+}
+
+allprojects {
+    if (project == project.rootProject) {
+        return
+    }
+
+    apply {
+        plugin("java-library")
+        plugin("signing")
+    }
+
+    java {
+        withSourcesJar()
+        withJavadocJar()
+    }
+
+    extensions.findByType(CommonExtension.class)?.with {
+        createPublicationFrom(components.java, HierarchyProjectName.get(project))
+    }
+
+    repositories {
+        mavenCentral()
+        maven { setUrl("https://repo.codemc.io/repository/maven-public/") }
+    }
+
+    dependencies {
+        compileOnlyApi(libs.jetbrainsAnnotations)
+        compileOnly(libs.lombok)
+        annotationProcessor(libs.lombok)
+
+        testImplementation(libs.lombok)
+        testAnnotationProcessor(libs.lombok)
+    }
+}
