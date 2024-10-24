@@ -5,6 +5,7 @@ import dev.oop778.gradle.common.HierarchyProjectName
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id 'signing'
 }
 
 apply plugin: CommonPlugin
@@ -13,36 +14,36 @@ common {
     applyCommonToAllProjects()
 }
 
-allprojects {
-    if (project == project.rootProject) {
-        return
-    }
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
 
-    apply {
-        plugin("java-library")
-        plugin("signing")
-    }
+extensions.findByType(CommonExtension.class)?.with {
+    createPublicationFrom(components.java, HierarchyProjectName.get(project))
+}
 
-    java {
-        withSourcesJar()
-        withJavadocJar()
-    }
+repositories {
+    mavenCentral()
+    maven { setUrl("https://repo.codemc.io/repository/maven-public/") }
+}
 
-    extensions.findByType(CommonExtension.class)?.with {
-        createPublicationFrom(components.java, HierarchyProjectName.get(project))
-    }
+dependencies {
+    compileOnlyApi(libs.jetbrainsAnnotations)
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
 
-    repositories {
-        mavenCentral()
-        maven { setUrl("https://repo.codemc.io/repository/maven-public/") }
-    }
+    testImplementation(libs.lombok)
+    testAnnotationProcessor(libs.lombok)
 
-    dependencies {
-        compileOnlyApi(libs.jetbrainsAnnotations)
-        compileOnly(libs.lombok)
-        annotationProcessor(libs.lombok)
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.7.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
 
-        testImplementation(libs.lombok)
-        testAnnotationProcessor(libs.lombok)
+test {
+    useJUnitPlatform()
+
+    filter {
+        includeTestsMatching "dev.oop778.keyedinstances.test.*"
     }
 }
