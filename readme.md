@@ -1,66 +1,68 @@
 # Keyed Instances
 ![Maven Central](https://img.shields.io/maven-central/v/dev.oop778/keyed-instances)
-![Static Badge](https://img.shields.io/badge/Java_version-8-brightgreene)
-![Scc Count Badge](https://sloc.xyz/github/oop-778/keyed-instances?category=code)
+![Java Version](https://img.shields.io/badge/Java_version-8-brightgreen)
+![Code Count](https://sloc.xyz/github/oop-778/keyed-instances?category=code)
 
 ## What's Keyed Instances?
 
-This library allows you to register your instances based on unique key & groups as defined by `KeyedGroupId`.
+Keyed Instances is a library that provides a flexible way to register and manage instances based on unique keys and group identifiers, as defined by `KeyedGroupId`.
 
-[## Features
-* Register objects implementing KeyedInstance interface
-* Retrieve objects by a full path for example `currency.tokens` or if you know the parent class you can just retrieve them by defining parent and just `tokens`
-* Retrieve keyed references, this is useful for configurations that can be reloaded at runtime, so you can keep reference and just get the up-to-date object.
-* Create "unresolved" references. This is also useful for whenever your configs depend on other objects that can be identified and resolved lazily.
-* Find all implementations of a specific group
-* Each KeyedInstance can have multiple root interfaces aka you can have `group_a` and `group_b` and retrieve the instance by either of one these `group_x.<instnace_key>`
+## Features
 
-### Example
+* **Register Instances**: Easily register objects that implement the `KeyedInstance` interface.
+* **Flexible Retrieval**: Retrieve objects using a full path (e.g., `currency.tokens`) or, if the parent class is known, by specifying only the parent and the key (e.g., `tokens`).
+* **Keyed References**: Access keyed references, ideal for configurations that may be reloaded at runtime—allowing references to stay up-to-date with current objects.
+* **Unresolved References**: Create "unresolved" references, useful for configurations that depend on other lazily resolved or yet-to-be-loaded objects.
+* **Group Implementations**: Find all instances within a specific group.
+* **Multiple Root Interfaces**: Each `KeyedInstance` can belong to multiple root groups, allowing retrieval via any associated path, such as `group_a.<instance_key>` or `group_b.<instance_key>`.
+
+### Example Usage
+
 ```java
-    public static void main(String[] args) {
-        // Create the registry
-        final KeyedRegistry registry = KeyedRegistry.builder().build();
+public static void main(String[] args) {
+    // Create the registry
+    final KeyedRegistry registry = KeyedRegistry.builder().build();
 
-        final GroupABImpl instance = new GroupABImpl();
+    final GroupABImpl instance = new GroupABImpl();
 
-        // Register object
-        registry.registerInstance(instance);
+    // Register an instance
+    registry.registerInstance(instance);
 
-        // Retrieve by class
-        registry.<GroupABImpl>find().single().withInstance(GroupABImpl.class).firstOrNull();
+    // Retrieve by class
+    registry.<GroupABImpl>find().single().withInstance(GroupABImpl.class).firstOrNull();
 
-        // Retrieve by path
-        registry.<GroupABImpl>find().single().withInstance("group_a.inner.impl").firstOrNull();
+    // Retrieve by path
+    registry.<GroupABImpl>find().single().withInstance("group_a.inner.impl").firstOrNull();
 
-        // Get full path of an instance (if instance has multi roots, it'll use first one)
-        registry.getInstancePath(instance);
+    // Get the full path of an instance (uses the first root if multiple exist)
+    registry.getInstancePath(instance);
 
-        // Get reference of instance
-        registry.<GroupABImpl>find().singleAsReference().withInstance(GroupABImpl.class).firstOrNull();
+    // Get a reference to the instance
+    registry.<GroupABImpl>find().singleAsReference().withInstance(GroupABImpl.class).firstOrNull();
 
-        // Get unresolved reference
-        registry.<GroupABImpl>find().singleAsReference().withInstance("group_a.inner.not_existing_yet").firstOrCreateUnresolvedReference();
+    // Get an unresolved reference
+    registry.<GroupABImpl>find().singleAsReference().withInstance("group_a.inner.not_existing_yet").firstOrCreateUnresolvedReference();
 
-        // Get path from a parent (this will return just inner.impl)
-        registry.getInstancePathFrom(GroupA.class, instance);
+    // Get path from a parent group (returns path as 'inner.impl')
+    registry.getInstancePathFrom(GroupA.class, instance);
+}
+
+@KeyedGroupId("group_a")
+public interface GroupA extends KeyedInstance {}
+
+@KeyedGroupId("group_b")
+public interface GroupB extends KeyedInstance {}
+
+@KeyedGroupId("inner")
+public interface InnerGroup extends GroupA, GroupB {}
+
+public static class GroupABImpl implements InnerGroup {
+    @Override
+    public @NonNull String getKey() {
+        return "impl";
     }
-
-    @KeyedGroupId("group_a")
-    public static interface GroupA extends KeyedInstance {}
-
-    @KeyedGroupId("group_b")
-    public static interface GroupB extends KeyedInstance {}
-
-    @KeyedGroupId("inner")
-    public static interface InnerGroup extends GroupA, GroupB {}
-
-    public static class GroupABImpl implements InnerGroup {
-        @Override
-        public @NonNull String getKey() {
-            return "impl";
-        }
-    }
+}
 ```
 
-### Structure
+## Structure
 ![Diagram](img/structure.png)
