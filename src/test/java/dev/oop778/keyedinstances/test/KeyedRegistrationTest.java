@@ -3,7 +3,7 @@ package dev.oop778.keyedinstances.test;
 import dev.oop778.keyedinstances.api.KeyedInstanceUpdater;
 import dev.oop778.keyedinstances.api.KeyedReference;
 import dev.oop778.keyedinstances.api.KeyedRegistry;
-import dev.oop778.keyedinstances.api.annotation.Keyed;
+import dev.oop778.keyedinstances.api.annotation.KeyedGroupId;
 import dev.oop778.keyedinstances.api.instance.KeyedInstance;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -68,7 +68,7 @@ public class KeyedRegistrationTest {
         assertEquals(object, reference.get());
     }
 
-    @Keyed("parent")
+    @KeyedGroupId("parent")
     private static interface Parent extends KeyedInstance {}
 
     @RequiredArgsConstructor

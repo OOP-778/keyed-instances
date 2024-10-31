@@ -1,9 +1,8 @@
 package dev.oop778.keyedinstances.test;
 
-import dev.oop778.keyedinstances.api.KeyedReference;
 import dev.oop778.keyedinstances.api.KeyedRegistry;
 import dev.oop778.keyedinstances.api.KeyedRegistryBuilder;
-import dev.oop778.keyedinstances.api.annotation.Keyed;
+import dev.oop778.keyedinstances.api.annotation.KeyedGroupId;
 import dev.oop778.keyedinstances.api.instance.KeyedInstance;
 import dev.oop778.keyedinstances.impl.path.IKeyedPath;
 import dev.oop778.keyedinstances.impl.path.KeyedPathFactory;
@@ -76,15 +75,15 @@ public class KeyedInstancesTest {
         assertEquals(instancesOfRoot.get(1).getKey(), "subjectabc");
     }
 
-    @Keyed("a")
+    @KeyedGroupId("a")
     interface IA extends KeyedInstance {
     }
 
-    @Keyed("b")
+    @KeyedGroupId("b")
     interface IB extends KeyedInstance {
     }
 
-    @Keyed("c")
+    @KeyedGroupId("c")
     interface CIB extends IB {}
 
     class SubjectAB implements IA, IB, KeyedInstance.WithRegistry {

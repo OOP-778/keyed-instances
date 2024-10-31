@@ -1,6 +1,6 @@
 package dev.oop778.keyedinstances.impl.path;
 
-import dev.oop778.keyedinstances.api.annotation.Keyed;
+import dev.oop778.keyedinstances.api.annotation.KeyedGroupId;
 import dev.oop778.keyedinstances.api.instance.KeyedInstance;
 
 import java.util.*;
@@ -76,7 +76,7 @@ public class KeyedPathFactory {
                 roots.add(current);
             }
 
-            if (current.getDeclaredAnnotation(Keyed.class) != null) {
+            if (current.getDeclaredAnnotation(KeyedGroupId.class) != null) {
                 path.add(current);
             }
 
@@ -122,7 +122,7 @@ public class KeyedPathFactory {
         final Map<Class<?>, List<Class<?>>> byRootPath = new IdentityHashMap<>();
 
         for (final Class<?> rootClass : roots) {
-            if (rootClass.getDeclaredAnnotation(Keyed.class) == null) {
+            if (rootClass.getDeclaredAnnotation(KeyedGroupId.class) == null) {
                 continue;
             }
 

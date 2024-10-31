@@ -2,7 +2,7 @@ package dev.oop778.keyedinstances.impl;
 
 import dev.oop778.keyedinstances.api.KeyedInstanceUpdater;
 import dev.oop778.keyedinstances.api.KeyedReference;
-import dev.oop778.keyedinstances.api.annotation.Keyed;
+import dev.oop778.keyedinstances.api.annotation.KeyedGroupId;
 import dev.oop778.keyedinstances.api.instance.KeyedInstance;
 import dev.oop778.keyedinstances.impl.path.IKeyedPath;
 import dev.oop778.keyedinstances.impl.path.KeyedPathFactory;
@@ -179,7 +179,7 @@ public class InstancesTree {
         TreeNode node = this.root;
 
         for (final Class<?> parentClass : path) {
-            final String parentKey = parentClass.getDeclaredAnnotation(Keyed.class).value();
+            final String parentKey = parentClass.getDeclaredAnnotation(KeyedGroupId.class).value();
 
             node = node.leafMap.computeIfAbsent(parentKey, ($) -> new TreeNode(null));
         }
@@ -188,7 +188,7 @@ public class InstancesTree {
     }
 
     private String joinPathToString(List<Class<?>> path) {
-        return path.stream().map(clazz -> clazz.getDeclaredAnnotation(Keyed.class).value()).collect(Collectors.joining("."));
+        return path.stream().map(clazz -> clazz.getDeclaredAnnotation(KeyedGroupId.class).value()).collect(Collectors.joining("."));
     }
 
     private List<Class<?>> getPathIncludingSelf(Class<? extends KeyedInstance> of) {
@@ -225,7 +225,7 @@ public class InstancesTree {
         TreeNode node = this.root;
 
         for (final Class<?> parentClass : path) {
-            final String parentKey = parentClass.getDeclaredAnnotation(Keyed.class).value();
+            final String parentKey = parentClass.getDeclaredAnnotation(KeyedGroupId.class).value();
             node = node.leafMap.get(parentKey);
 
             if (node == null) {
