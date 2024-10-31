@@ -33,7 +33,7 @@ jobs:
         env:
           MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
-          SIGNING_KEY: ${{ secrets.SIGN_KEY }}
-          SIGNING_PASSWORD: ${{ secrets.SIGN_PASSWORD }}
-          RELEASE_VERSION: ${{ github.ref_name }}
+          SIGN_KEY: ${{ secrets.SIGN_KEY }}
+          SIGN_PASSWORD: ${{ secrets.SIGN_PASSWORD }}
+          VERSION: ${{ github.ref_name }}
         run: ./gradlew publish -Pversion=$RELEASE_VERSION
