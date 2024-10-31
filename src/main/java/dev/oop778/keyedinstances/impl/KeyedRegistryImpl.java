@@ -1,44 +1,41 @@
 package dev.oop778.keyedinstances.impl;
 
-import dev.oop778.keyedinstances.api.KeyedInstances;
+import dev.oop778.keyedinstances.api.KeyedRegistry;
+import dev.oop778.keyedinstances.api.find.KeyedFinderSelector;
 import dev.oop778.keyedinstances.api.instance.KeyedInstance;
+import dev.oop778.keyedinstances.impl.find.FinderSelectorImpl;
 import dev.oop778.keyedinstances.impl.util.SafeIterator;
 import dev.oop778.keyedinstances.impl.util.TransformingIterator;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 
-public class KeyedInstancesImpl implements KeyedInstances {
-    private final InstancesTree tree = new InstancesTree();
-    private final TreeReferenceCollection treeReferenceCollection = new TreeReferenceCollection(this.tree.instances.values());
+@ApiStatus.Internal
+public class KeyedRegistryImpl implements KeyedRegistry {
+    private final InstancesTree tree;
+    private final TreeReferenceCollection treeReferenceCollection;
+
+    public KeyedRegistryImpl(KeyedRegistryBuilderImpl builder) {
+        this.tree = new InstancesTree(builder.updater);
+        this.treeReferenceCollection = new TreeReferenceCollection(this.tree.instances.values());
+    }
 
     @Override
-    public void registerInstance(@NonNull KeyedInstance instance) {
-        this.tree.register(instance);
+    public boolean registerInstance(@NonNull KeyedInstance instance) {
+        return this.tree.register(instance);
     }
 
     @Override
     public void unregisterInstance(@NonNull KeyedInstance instance) {}
 
     @Override
-    public Collection<KeyedInstance> unregisterInstances(@NonNull Class<? extends KeyedInstance> ofClass) {
+    public <T> Collection<? extends T> unregisterInstances(@NonNull Class<T> ofClass) {
         return Collections.emptyList();
-    }
-
-    @Override
-    public @Nullable KeyedInstance getInstance(@Nullable Class<? extends KeyedInstance> rootOrParent, @NonNull String path) {
-        return this.tree.getInstance(rootOrParent, path);
-    }
-
-    @Override
-    public <T extends KeyedInstance> @Nullable T getInstanceOfClass(@NonNull Class<T> clazz) {
-        return this.tree.getInstanceOfClass(clazz);
     }
 
     @Override
@@ -47,13 +44,18 @@ public class KeyedInstancesImpl implements KeyedInstances {
     }
 
     @Override
-    public <T extends KeyedInstance> List<? extends T> getInstancesOfRoot(@NonNull Class<T> root) {
-        return this.tree.getInstancesOfRoot(root);
+    public <T extends KeyedInstance> KeyedFinderSelector<T> find() {
+        return new FinderSelectorImpl<>(this.tree);
     }
 
     @Override
-    public <T extends KeyedInstance> List<? extends T> getInstancesOfRoot(@NonNull String rootPath) {
-        return this.tree.getInstancesOfRoot(rootPath);
+    public String getInstancePath(@NonNull KeyedInstance instance) {
+        return this.tree.getPath(instance);
+    }
+
+    @Override
+    public String getInstancePathFrom(@NonNull Class<? extends KeyedInstance> parent, @NonNull KeyedInstance instance) {
+        return this.tree.getPathFrom(parent, instance);
     }
 
     @RequiredArgsConstructor
@@ -78,7 +80,7 @@ public class KeyedInstancesImpl implements KeyedInstances {
         @Override
         public @NotNull Iterator<KeyedInstance> iterator() {
             return new TransformingIterator<>(
-                    (ref) -> (KeyedInstance) ref.getValue(),
+                    InstancesTree.TreeReference::getValue,
                     new SafeIterator<InstancesTree.TreeReference<?>>(this.collection.iterator()) {
                         @Override
                         protected boolean validate(InstancesTree.TreeReference<?> value) {

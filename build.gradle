@@ -1,4 +1,3 @@
-import dev.oop778.gradle.common.CommonExtension
 import dev.oop778.gradle.common.CommonPlugin
 import dev.oop778.gradle.common.HierarchyProjectName
 
@@ -12,15 +11,12 @@ apply plugin: CommonPlugin
 
 common {
     applyCommonToAllProjects()
+    createPublicationFrom(components.java, HierarchyProjectName.get(project))
 }
 
 java {
     withSourcesJar()
     withJavadocJar()
-}
-
-extensions.findByType(CommonExtension.class)?.with {
-    createPublicationFrom(components.java, HierarchyProjectName.get(project))
 }
 
 repositories {

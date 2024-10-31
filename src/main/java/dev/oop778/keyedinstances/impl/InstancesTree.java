@@ -1,5 +1,7 @@
 package dev.oop778.keyedinstances.impl;
 
+import dev.oop778.keyedinstances.api.KeyedInstanceUpdater;
+import dev.oop778.keyedinstances.api.KeyedReference;
 import dev.oop778.keyedinstances.api.annotation.Keyed;
 import dev.oop778.keyedinstances.api.instance.KeyedInstance;
 import dev.oop778.keyedinstances.impl.path.IKeyedPath;
@@ -9,35 +11,59 @@ import dev.oop778.keyedinstances.impl.path.SingleRootKeyedPath;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NonNull;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+@ApiStatus.Internal
 public class InstancesTree {
-    protected final TreeNode root = new TreeNode(null, null);
-    protected final Map<Class<? extends KeyedInstance>, TreeReference<?>> instances = new ConcurrentHashMap<>();
+    protected final KeyedInstanceUpdater updater;
+    protected final TreeNode root;
+    protected final Map<Class<? extends KeyedInstance>, TreeReference<?>> instances;
+    protected final UnresolvedInstances unresolvedInstances;
 
-    public <T extends KeyedInstance> void register(T object) {
+    public InstancesTree(KeyedInstanceUpdater updater) {
+        this.updater = updater;
+        this.root = new TreeNode(null);
+        this.instances = new ConcurrentHashMap<>();
+        this.unresolvedInstances = new UnresolvedInstances(this);
+    }
+
+    public <T extends KeyedInstance> boolean register(T object) {
+        TreeReference<T> treeReference = (TreeReference<T>) this.instances.get(object.getClass());
+        if (treeReference != null) {
+            final T value = treeReference.value;
+            final T updated = (T) this.updater.update(value, object);
+            if (Objects.equals(updated, value)) {
+                return false;
+            }
+
+            treeReference.update(updated);
+        }
+
+        treeReference = (TreeReference<T>) this.instances.computeIfAbsent(object.getClass(), ($) -> new TreeReference<>(object, object.getClass()));
+
         final IKeyedPath<? extends KeyedInstance> path = KeyedPathFactory.create(object.getClass());
         if (path instanceof MultiRootKeyedPath) {
-            this.registerMultiRoot(object, ((MultiRootKeyedPath<T>) path));
+            this.registerMultiRoot(object, ((MultiRootKeyedPath<T>) path), treeReference);
         } else {
-            this.registerSingleRoot(object, ((SingleRootKeyedPath<T>) path));
+            this.registerSingleRoot(object, ((SingleRootKeyedPath<T>) path), treeReference);
         }
+
+        this.unresolvedInstances.resolve(treeReference);
+
+        return true;
     }
 
-    public @Nullable <T extends KeyedInstance> T getInstanceOfClass(@NonNull Class<T> clazz) {
+    public @Nullable <T extends KeyedInstance> KeyedReference<T> getInstanceOfClass(@NonNull Class<T> clazz) {
         final TreeReference<?> treeReference = this.instances.get(clazz);
-        if (treeReference == null) {
-            return null;
-        }
-
-        return (T) treeReference.value;
+        return (KeyedReference<T>) treeReference;
     }
 
-    public @Nullable KeyedInstance getInstance(Class<? extends KeyedInstance> rootOrParent, @NonNull String path) {
+    public <T extends KeyedInstance> @Nullable KeyedReference<T> getInstance(@Nullable Class<? extends KeyedInstance> rootOrParent, @NonNull String path) {
         TreeNode node = this.root;
         if (rootOrParent != null) {
             final List<Class<?>> pathIncludingSelf = this.getPathIncludingSelf(rootOrParent);
@@ -59,64 +85,92 @@ public class InstancesTree {
             }
         }
 
-        return node.reference == null ? null : (KeyedInstance) node.reference.value;
+        return (KeyedReference<T>) node.reference;
     }
 
-    public <T extends KeyedInstance> List<? extends T> getInstancesOfRoot(@NonNull Class<T> root) {
-        final TreeNode node = this.findNode(this.getPathIncludingSelf(root));
+    public <T extends KeyedInstance> void collectInstancesFromParent(@NonNull Class<? extends T> parent, Collection<KeyedReference<? extends T>> collection) {
+        final TreeNode node = this.findNode(this.getPathIncludingSelf(parent));
         if (node == null) {
-            return Collections.emptyList();
+            return;
         }
 
-        return this.getInstancesFromNode(node);
+        this.collectInstanceOfNode(node, collection);
     }
 
-    public <T extends KeyedInstance> List<? extends T> getInstancesOfRoot(@NonNull String path) {
+    public <T extends KeyedInstance> void collectInstancesFromPath(@NonNull String path, Collection<KeyedReference<? extends T>> collection) {
         final String[] split = path.split("\\.");
         TreeNode node = this.root;
         for (final String key : split) {
             node = node.leafMap.get(key);
             if (node == null) {
-                return Collections.emptyList();
+                return;
             }
         }
 
-        return this.getInstancesFromNode(node);
+        this.collectInstanceOfNode(node, collection);
     }
 
-    private <T extends KeyedInstance> List<? extends T> getInstancesFromNode(TreeNode node) {
+    public String getPath(@NonNull KeyedInstance instance) {
+        final List<Class<?>> path = this.getPathIncludingSelf(instance.getClass());
+        return this.getPath(instance, path);
+    }
+
+    public Set<String> getPaths(@NonNull KeyedInstance instance) {
+        final IKeyedPath<? extends @NonNull KeyedInstance> path = KeyedPathFactory.create(instance.getClass());
+        if (path instanceof SingleRootKeyedPath) {
+            return new HashSet<>(Collections.singletonList(this.getPath(instance, ((SingleRootKeyedPath<?>) path).getPath())));
+        }
+
+        return ((MultiRootKeyedPath<?>) path).getRootToPath().values().stream()
+                .map(classes -> this.getPath(instance, classes))
+                .collect(Collectors.toSet());
+    }
+
+    public String getPathFrom(@NonNull Class<? extends KeyedInstance> parent, @NonNull KeyedInstance instance) {
+        final List<Class<?>> instancePath = this.getPathIncludingSelf(instance.getClass(), parent);
+        final int i = instancePath.indexOf(parent);
+
+        final String rootPath = this.joinPathToString(instancePath.subList(i + 1, instancePath.size()));
+        return rootPath.isEmpty() ? instance.getKey() : rootPath + "." + instance.getKey();
+    }
+
+    public <T extends KeyedInstance> KeyedReference<T> createUnresolvedReference(@NonNull Class<T> instanceClass) {
+        return this.unresolvedInstances.createOfClass(instanceClass);
+    }
+
+    public <T extends KeyedInstance> KeyedReference<T> createUnresolvedReference(Class<? extends T> parent, @NonNull String fullPath) {
+        return this.unresolvedInstances.createOfPath(parent, fullPath);
+    }
+
+    private String getPath(@NonNull KeyedInstance instance, List<Class<?>> path) {
+        final String parent = this.joinPathToString(path);
+        return parent.isEmpty() ? instance.getKey() : parent + "." + instance.getKey();
+    }
+
+    private <T extends KeyedInstance> void collectInstanceOfNode(TreeNode node, Collection<KeyedReference<? extends T>> collection) {
         final Queue<TreeNode> toVisit = new LinkedList<>();
         toVisit.add(node);
 
-        final List<T> result = new ArrayList<>();
         while (!toVisit.isEmpty()) {
             final TreeNode poll = toVisit.poll();
             if (poll.reference != null && poll.reference.value != null) {
-                result.add((T) poll.reference.value);
+                collection.add((KeyedReference<T>) poll.reference);
             }
 
-            for (final TreeNode child : poll.leafMap.values()) {
-                toVisit.add(child);
-            }
+            toVisit.addAll(poll.leafMap.values());
         }
-
-        return result;
     }
 
-    private <T extends KeyedInstance> void registerSingleRoot(T object, SingleRootKeyedPath<T> path) {
+    private <T extends KeyedInstance> void registerSingleRoot(T object, SingleRootKeyedPath<T> path, TreeReference<T> treeReference) {
         final TreeNode parentNode = this.getOrCreateNode(path.getPath());
-        final TreeNode objectNode = parentNode.leafMap.computeIfAbsent(object.key(), ($) -> new TreeNode(parentNode, null));
-        objectNode.reference = new TreeReference<>(object, object.getClass());
-        this.instances.put(object.getClass(), objectNode.reference);
+        final TreeNode objectNode = parentNode.leafMap.computeIfAbsent(object.getKey(), ($) -> new TreeNode(null));
+        objectNode.reference = treeReference;
     }
 
-    private <T extends KeyedInstance> void registerMultiRoot(T object, MultiRootKeyedPath<T> path) {
-        final TreeReference<T> treeReference = new TreeReference<>(object, object.getClass());
-        this.instances.put(object.getClass(), treeReference);
-
+    private <T extends KeyedInstance> void registerMultiRoot(T object, MultiRootKeyedPath<T> path, TreeReference<T> treeReference) {
         for (final List<Class<?>> pathFromRoot : path.getRootToPath().values()) {
             final TreeNode parentNode = this.getOrCreateNode(pathFromRoot);
-            final TreeNode objectNode = parentNode.leafMap.computeIfAbsent(object.key(), ($) -> new TreeNode(parentNode, null));
+            final TreeNode objectNode = parentNode.leafMap.computeIfAbsent(object.getKey(), ($) -> new TreeNode(null));
             objectNode.reference = treeReference;
         }
     }
@@ -127,8 +181,7 @@ public class InstancesTree {
         for (final Class<?> parentClass : path) {
             final String parentKey = parentClass.getDeclaredAnnotation(Keyed.class).value();
 
-            final TreeNode nodeSave = node;
-            node = node.leafMap.computeIfAbsent(parentKey, ($) -> new TreeNode(nodeSave, null));
+            node = node.leafMap.computeIfAbsent(parentKey, ($) -> new TreeNode(null));
         }
 
         return node;
@@ -151,6 +204,23 @@ public class InstancesTree {
         return path;
     }
 
+    private List<Class<?>> getPathIncludingSelf(Class<? extends KeyedInstance> from, Class<? extends KeyedInstance> contains) {
+        final IKeyedPath<? extends KeyedInstance> keyedPath = KeyedPathFactory.create(from);
+
+        final List<Class<?>> path;
+        if (keyedPath instanceof SingleRootKeyedPath) {
+            path = new ArrayList<>(((SingleRootKeyedPath<?>) keyedPath).getPath());
+        } else {
+            return ((MultiRootKeyedPath<?>) keyedPath).getRootToPath().entrySet().stream()
+                    .filter(entry -> entry.getValue().contains(contains))
+                    .flatMap(entry -> entry.getValue().stream())
+                    .collect(Collectors.toList());
+
+        }
+
+        return path;
+    }
+
     private TreeNode findNode(List<Class<?>> path) {
         TreeNode node = this.root;
 
@@ -168,22 +238,25 @@ public class InstancesTree {
 
     @AllArgsConstructor
     @Getter
-    protected static class TreeReference<T> {
+    public static class TreeReference<T extends KeyedInstance> implements KeyedReference<T> {
         @Nullable
         private volatile T value;
         private volatile Class<? extends KeyedInstance> clazz;
 
-        public void update(T value, Class<? extends KeyedInstance> clazz) {
+        @Override
+        public T get() {
+            return this.value;
+        }
+
+        public void update(T value) {
             this.value = value;
-            this.clazz = clazz;
+            this.clazz = value.getClass();
         }
     }
 
     @AllArgsConstructor
     protected static class TreeNode {
         protected final Map<String, TreeNode> leafMap = new ConcurrentHashMap<>();
-        @Nullable
-        protected TreeNode parent;
         @Nullable
         protected TreeReference<?> reference;
     }
