@@ -31,6 +31,7 @@ jobs:
 
       - name: Publish artifacts
         env:
+          GROUP: ${{ secrets.GROUP }}
           MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
           SIGN_KEY: ${{ secrets.SIGN_KEY }}
