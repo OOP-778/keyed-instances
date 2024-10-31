@@ -33,6 +33,9 @@ jobs:
           VERSION="${{ github.event.inputs.version || github.ref_name }}"
           echo "VERSION=${VERSION#v}" >> $GITHUB_ENV
 
+      - name: "Build"
+        run: "gradle build"
+
       - name: Publish artifacts
         env:
           GROUP: ${{ secrets.GROUP }}
