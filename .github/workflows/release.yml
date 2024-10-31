@@ -36,4 +36,4 @@ jobs:
           SIGN_KEY: ${{ secrets.SIGN_KEY }}
           SIGN_PASSWORD: ${{ secrets.SIGN_PASSWORD }}
           VERSION: ${{ github.ref_name }}
-        run: ./gradlew publish -Pversion=$RELEASE_VERSION
+        run: ./gradlew publish
