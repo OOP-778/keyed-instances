@@ -15,12 +15,14 @@ common {
 }
 
 deployer {
-    if (System.getenv("SIGN_KEY") != null) {
-        setupSigning(System.getenv("SIGN_KEY"), System.getenv("SIGN_PASSWORD"))
-    }
+    if (System.getenv("CI") != null) {
+        if (System.getenv("SIGN_KEY") != null) {
+            setupSigning(System.getenv("SIGN_KEY"), System.getenv("SIGN_PASSWORD"))
+        }
 
-    def publication = createPublicationFrom(components.java, HierarchyProjectName.get(project), "dev.oop778", System.getenv("VERSION"))
-    publishToMavenCentral(publication, System.getenv("MAVEN_USERNAME"), System.getenv("MAVEN_PASSWORD"), MavenCentralReleaseManagement.USER_MANAGED)
+        def publication = createPublicationFrom(components.java, HierarchyProjectName.get(project), "dev.oop778", System.getenv("VERSION"))
+        publishToMavenCentral(publication, System.getenv("MAVEN_USERNAME"), System.getenv("MAVEN_PASSWORD"), MavenCentralReleaseManagement.USER_MANAGED)
+    }
 }
 
 java {
