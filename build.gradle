@@ -21,7 +21,7 @@ deployer {
         }
 
         def publication = createPublicationFrom(components.java, HierarchyProjectName.get(project), "dev.oop778", System.getenv("VERSION"))
-        publishToMavenCentral(publication, System.getenv("MAVEN_USERNAME"), System.getenv("MAVEN_PASSWORD"), MavenCentralReleaseManagement.AUTOMATIC)
+        publishToMavenCentral(publication, System.getenv("MAVEN_USERNAME"), System.getenv("MAVEN_PASSWORD"), MavenCentralReleaseManagement.USER_MANAGED)
     }
 }
 
