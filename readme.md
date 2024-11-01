@@ -16,7 +16,26 @@ Keyed Instances is a library that provides a flexible way to register and manage
 * **Group Implementations**: Find all instances within a specific group.
 * **Multiple Root Interfaces**: Each `KeyedInstance` can belong to multiple root groups, allowing retrieval via any associated path, such as `group_a.<instance_key>` or `group_b.<instance_key>`.
 
-### Example Usage
+## Getting Started
+
+Keyed Instances are hosted on Maven Central  
+To use Keyed Instances, add the following dependency to your project:
+
+### Maven
+```xml
+<dependency>
+    <groupId>dev.oop778</groupId>
+    <artifactId>keyed-instances</artifactId>
+    <version>VERSION</version>
+</dependency>
+```
+
+### Gradle
+```gradle
+implementation 'dev.oop778:keyed-instances:VERSION'
+```
+
+## Example Usage
 
 ```java
 public static void main(String[] args) {
