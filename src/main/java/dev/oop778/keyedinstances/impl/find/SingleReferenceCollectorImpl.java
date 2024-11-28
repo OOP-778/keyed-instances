@@ -17,6 +17,11 @@ public class SingleReferenceCollectorImpl<T extends KeyedInstance> extends Refer
 
     @Override
     public KeyedReference<? extends T> firstOrCreateUnresolvedReference() {
+        final KeyedReference<? extends T> keyedReference = this.firstOrNull();
+        if (keyedReference != null) {
+            return keyedReference;
+        }
+
         return this.unresolvedReferenceSupplier.get();
     }
 }
